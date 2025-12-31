@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Null Vector | Autonomous Defense Systems</title>
+    <meta name="description"
+        content="Null Vector builds indigenous AI-driven autonomous systems for defense and contested environments.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-color: #e0e0e0;
+            --accent-color: #00d4ff;
+            --accent-dim: rgba(0, 212, 255, 0.1);
+            --secondary-text: #888;
+            --grid-color: rgba(255, 255, 255, 0.03);
+            --font-main: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            line-height: 1.6;
+            overflow: hidden;
+            /* Prevent scroll for full immersion */
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* --- Visual Effects Layers --- */
+
+        /* Canvas */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+        }
+
+        /* Grid Overlay */
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Scanline / CRT Effect */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom,
+                    rgba(255, 255, 255, 0),
+                    rgba(255, 255, 255, 0) 50%,
+                    rgba(0, 0, 0, 0.1) 50%,
+                    rgba(0, 0, 0, 0.1));
+            background-size: 100% 4px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* Vignette */
+        .vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 60%, rgba(0, 0, 0, 0.8) 100%);
+            z-index: 99;
+            pointer-events: none;
+        }
+
+        /* --- HUD Elements --- */
+        .hud-corner {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--accent-color);
+            z-index: 50;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+
+        .hud-corner:hover {
+            opacity: 1;
+        }
+
+        .top-left {
+            top: 20px;
+            left: 20px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .top-right {
+            top: 20px;
+            right: 20px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .bottom-left {
+            bottom: 20px;
+            left: 20px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .bottom-right {
+            bottom: 20px;
+            right: 20px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .hud-text {
+            position: fixed;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--accent-color);
+            opacity: 0.7;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        .hud-coords {
+            bottom: 25px;
+            left: 70px;
+        }
+
+        .hud-status {
+            top: 25px;
+            right: 70px;
+            text-align: right;
+        }
+
+        /* --- Layout --- */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Header */
+        header {
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-family: var(--font-main);
+            font-weight: 700;
+            font-size: 4rem;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.5rem;
+            color: #fff;
+            text-transform: uppercase;
+            position: relative;
+        }
+
+        .logo-corner {
+            position: fixed;
+            top: 30px;
+            left: 40px;
+            height: 90px;
+            width: auto;
+            z-index: 60;
+            filter: drop-shadow(0 0 10px var(--accent-color));
+            opacity: 0.9;
+        }
+
+        .tagline {
+            font-family: var(--font-mono);
+            color: var(--accent-color);
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 2rem;
+            display: inline-block;
+            padding-bottom: 0.2rem;
+            border-bottom: 1px solid var(--accent-color);
+        }
+
+        /* Content */
+        .description {
+            font-size: 1.2rem;
+            color: #ccc;
+            margin-bottom: 3rem;
+            max-width: 650px;
+            font-weight: 300;
+            line-height: 1.7;
+            border-left: 2px solid var(--accent-dim);
+            padding-left: 1.5rem;
+        }
+
+        .status-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--accent-color);
+            background: rgba(0, 212, 255, 0.05);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            padding: 0.8rem 1.2rem;
+            backdrop-filter: blur(5px);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-color);
+            box-shadow: 0 0 10px var(--accent-color);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* Form */
+        .signup-form {
+            display: flex;
+            gap: 0;
+            max-width: 500px;
+            margin-bottom: 4rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: border-color 0.3s;
+        }
+
+        .signup-form:hover,
+        .signup-form:focus-within {
+            border-color: var(--accent-color);
+        }
+
+        input[type="email"] {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: none;
+            padding: 1rem 1.2rem;
+            color: #fff;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--accent-color);
+            border: none;
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0 2rem;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }
+
+        button:hover {
+            background: var(--accent-color);
+            color: #000;
+        }
+
+        .message {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-color);
+            display: none;
+            font-family: var(--font-mono);
+            padding-left: 1rem;
+            border-left: 2px solid var(--accent-color);
+        }
+
+        .contact-info {
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            color: var(--text-color);
+            margin-bottom: 4rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1rem 1.5rem;
+            border-left: 2px solid var(--accent-color);
+            width: fit-content;
+        }
+
+        .email-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .email-link:hover {
+            text-shadow: 0 0 8px var(--accent-color);
+            letter-spacing: 0.05em;
+        }
+
+        /* Footer */
+        footer {
+            padding: 2rem;
+            font-size: 0.75rem;
+            color: var(--secondary-text);
+            font-family: var(--font-mono);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Glitch Effect Class */
+        .glitch-text {
+            position: relative;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .container {
+                padding: 1.5rem;
+            }
+
+            .hud-corner {
+                display: none;
+            }
+
+            /* Hide corners on mobile to save space */
+            .signup-form {
+                flex-direction: column;
+                border: none;
+                gap: 1rem;
+            }
+
+            .signup-form input,
+            .signup-form button {
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+
+            .signup-form button {
+                border-left: 1px solid rgba(255, 255, 255, 0.2);
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Visual Layers -->
+    <canvas id="bg-canvas"></canvas>
+    <div class="grid-overlay"></div>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+
+    <!-- Logo -->
+    <img src="logo.png" alt="Null Vector Logo" class="logo-corner">
+
+    <!-- HUD Elements -->
+    <div class="hud-corner top-left"></div>
+    <div class="hud-corner top-right"></div>
+    <div class="hud-corner bottom-left"></div>
+    <div class="hud-corner bottom-right"></div>
+
+    <div class="hud-text hud-coords">EARLY STAGE</div>
+    <div class="hud-text hud-status">
+        SYS_INTEGRITY: 98%<br>
+        NET_STATUS: SECURE
+    </div>
+
+    <div class="container">
+        <header>
+            <h1 class="scramble-target" data-value="NULL VECTOR">NULL VECTOR</h1>
+            <div class="tagline scramble-target" data-value="AUTONOMOUS DEFENSE SYSTEMS">AUTONOMOUS DEFENSE SYSTEMS
+            </div>
+        </header>
+
+        <div class="status-box">
+            <div class="status-dot"></div>
+            <span id="system-status">INITIALIZING...</span>
+        </div>
+
+        <p class="description">
+            We build indigenous AI-driven autonomous systems for the next generation of defense.
+            Resilient, adaptive, and capable of operating in contested environments where traditional communications
+            fail.
+        </p>
+
+        <div class="contact-info">
+            <span>>> ESTABLISH COMMS:</span>
+            <a href="mailto:founders@nullvector.in" class="email-link">founders@nullvector.in</a>
+        </div>
+    </div>
+
+    <footer>
+        <div>Coming soon</div>
+        <div>[RESTRICTED ACCESS]</div>
+    </footer>
+
+    <script>
+        // --- Text Scramble Effect ---
+        class TextScramble {
+            constructor(el) {
+                this.el = el;
+                this.chars = '!<>-_\\/[]{}—=+*^?#________';
+                this.update = this.update.bind(this);
+            }
+
+            setText(newText) {
+                const oldText = this.el.innerText;
+                const length = Math.max(oldText.length, newText.length);
+                const promise = new Promise((resolve) => this.resolve = resolve);
+                this.queue = [];
+
+                for (let i = 0; i < length; i++) {
+                    const from = oldText[i] || '';
+                    const to = newText[i] || '';
+                    const start = Math.floor(Math.random() * 40);
+                    const end = start + Math.floor(Math.random() * 40);
+                    this.queue.push({ from, to, start, end });
+                }
+
+                cancelAnimationFrame(this.frameRequest);
+                this.frame = 0;
+                this.update();
+                return promise;
+            }
+
+            update() {
+                let output = '';
+                let complete = 0;
+
+                for (let i = 0, n = this.queue.length; i < n; i++) {
+                    let { from, to, start, end, char } = this.queue[i];
+                    if (this.frame >= end) {
+                        complete++;
+                        output += to;
+                    } else if (this.frame >= start) {
+                        if (!char || Math.random() < 0.28) {
+                            char = this.randomChar();
+                            this.queue[i].char = char;
+                        }
+                        output += `<span class="dud">${char}</span>`;
+                    } else {
+                        output += from;
+                    }
+                }
+
+                this.el.innerHTML = output;
+
+                if (complete === this.queue.length) {
+                    this.resolve();
+                } else {
+                    this.frameRequest = requestAnimationFrame(this.update);
+                    this.frame++;
+                }
+            }
+
+            randomChar() {
+                return this.chars[Math.floor(Math.random() * this.chars.length)];
+            }
+        }
+
+        // Initialize Scramble
+        const phrases = document.querySelectorAll('.scramble-target');
+        phrases.forEach(el => {
+            const fx = new TextScramble(el);
+            const final = el.getAttribute('data-value');
+            // Start with random text then resolve to final
+            el.innerText = '................';
+            setTimeout(() => {
+                fx.setText(final);
+            }, 500);
+        });
+
+        // --- Status Cycler ---
+        const statusEl = document.getElementById('system-status');
+        const statuses = ["COMING SOON", "IN DEVELOPMENT", "LOOKING FOR INVESTORS", "AWAITING INPUT"];
+        let statusIdx = 0;
+
+        setInterval(() => {
+            statusIdx = (statusIdx + 1) % statuses.length;
+            statusEl.innerText = statuses[statusIdx];
+        }, 3000);
+
+        // --- Particle System ---
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        let particles = [];
+        let mouse = { x: null, y: null, radius: 150 };
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = Math.random() * 2 + 1;
+                this.baseX = this.x;
+                this.baseY = this.y;
+                this.density = (Math.random() * 30) + 1;
+            }
+
+            update() {
+                // Mouse Interaction
+                if (mouse.x != null) {
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    let forceDirectionX = dx / distance;
+                    let forceDirectionY = dy / distance;
+                    let maxDistance = mouse.radius;
+                    let force = (maxDistance - distance) / maxDistance;
+                    let directionX = forceDirectionX * force * this.density;
+                    let directionY = forceDirectionY * force * this.density;
+
+                    if (distance < mouse.radius) {
+                        this.x -= directionX;
+                        this.y -= directionY;
+                    } else {
+                        // Return to normal movement
+                        if (this.x !== this.baseX) {
+                            let dx = this.x - this.baseX;
+                            this.x -= dx / 10;
+                        }
+                        if (this.y !== this.baseY) {
+                            let dy = this.y - this.baseY;
+                            this.y -= dy / 10;
+                        }
+                    }
+                }
+
+                // Normal movement
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Bounce
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.fillStyle = 'rgba(0, 212, 255, 0.4)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function init() {
+            particles = [];
+            let numberOfParticles = (width * height) / 15000;
+            for (let i = 0; i < numberOfParticles; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+
+                // Connections
+                for (let j = i; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 120) {
+                        ctx.strokeStyle = `rgba(0, 212, 255, ${0.15 - distance / 1000})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            resize();
+            init();
+        });
+
+        resize();
+        init();
+        animate();
+    </script>
+</body>
+
+</html>
